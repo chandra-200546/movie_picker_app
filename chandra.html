@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Movie Picker</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0a0e14;
+            /* Darker background */
+        }
+
+        .card {
+            background-color: #1e293b;
+            /* Deep slate blue background */
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+            /* Stronger shadow */
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            /* Subtle lift on hover */
+        }
+
+        .gemini-gradient {
+            background-image: linear-gradient(to right, #6EE7B7, #3B82F6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-fill-color: transparent;
+        }
+
+        /* Style for inputs and selectors */
+        .app-input {
+            /* Increased padding, border, and transition */
+            padding: 0.8rem;
+            border: 1px solid #374151;
+            /* Slate border */
+            background-color: #0f172a;
+            /* Darkest blue for inputs */
+            color: #f3f4f6;
+            transition: all 0.2s;
+        }
+
+        .app-input:focus {
+            border-color: #60a5fa;
+            /* Light blue on focus */
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.5);
+        }
+    </style>
+</head>
+
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div id="app" class="card w-full max-w-lg p-10 rounded-2xl border border-blue-900/50">
+        <h1 class="text-4xl font-extrabold text-center mb-4">
+            <span class="gemini-gradient">Movie Picker</span>
+        </h1>
+        <p class="text-gray-300 text-center mb-8 text-lg font-light">Find a movie **currently running in theaters** in
+            your chosen language.</p>
+
+        <!-- Input Section -->
+        <div class="flex flex-col md:flex-row gap-3 mb-8">
+            <!-- Language Selector -->
+            <select id="languageSelect" class="rounded-lg app-input w-full md:w-1/3">
+                <option value="English">Language: English</option>
+                <option value="Hindi">भाषा: Hindi</option>
+                <option value="Tamil">மொழி: Tamil</option>
+                <option value="Kannada">ಕನ್ನಡ: Kannada</option>
+                <option value="Malayalam">മലയാളം: Malayalam</option>
+                <option value="Telugu">తెలుగు: Telugu</option>
+            </select>
+
+            <!-- Genre Selector (Updated from Input) -->
+            <select id="genreInput" class="rounded-lg app-input flex-grow">
+                <option value="" disabled selected>Select a Genre</option>
+                <option value="Action">Action</option>
+                <option value="Adventure">Adventure</option>
+                <option value="Comedy">Comedy</option>
+                <option value="Crime">Crime</option>
+                <option value="Drama">Drama</option>
+                <option value="Fantasy">Fantasy</option>
+                <option value="Horror">Horror</option>
+                <option value="Musical">Musical</option>
+                <option value="Romance">Romance</option>
+                <option value="Sci-Fi">Sci-Fi</option>
+                <option value="Thriller">Thriller</option>
+                <option value="Biographical">Biographical</option>
+                <option value="Animated">Animated</option>
+            </select>
+
+            <!-- Button -->
+            <button id="pickButton"
+                class="px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition duration-300 shadow-xl shadow-blue-900/50 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.01]">
+                Pick a Movie
+            </button>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="hidden text-center p-4 text-blue-400 font-medium rounded-lg bg-blue-900/20">
+            <svg class="animate-spin h-5 w-5 mr-3 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none"
+                viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                </path>
+            </svg>
+            Searching for current theatrical releases...
+        </div>
+
+        <!-- Result Section -->
+        <div id="resultContainer"
+            class="hidden p-6 mt-6 border-2 border-green-500 bg-gray-900/50 rounded-xl transition duration-500 ease-in-out">
+            <h2 class="text-2xl font-extrabold text-green-400 mb-3" id="movieTitle"></h2>
+            <p class="text-gray-200 mb-4 leading-relaxed" id="movieSummary"></p>
+
+            <!-- BOOKING BUTTON -->
+            <a id="bookingButton" target="_blank"
+                class="hidden inline-block px-5 py-2.5 bg-pink-600 text-white font-bold rounded-lg hover:bg-pink-700 transition duration-300 shadow-lg shadow-pink-900/50 mt-4 cursor-pointer transform hover:scale-[1.01]">
+                🎟️ Book Tickets Now! (via BookMyShow search)
+            </a>
+
+            <div id="sourcesContainer" class="mt-4 pt-4 border-t border-gray-700">
+                <p class="text-xs text-gray-400 font-semibold mb-1">Sources:</p>
+                <ul id="sourceList" class="text-sm space-y-1"></ul>
+            </div>
+        </div>
+
+        <!-- Error Message (also used for No-Movie-Found message) -->
+        <div id="errorContainer"
+            class="hidden p-4 mt-4 bg-red-900 border border-red-600 rounded-lg text-red-300 font-medium">
+            <p id="errorMessage"></p>
+        </div>
+
+    </div>
+
+    <!-- FOOTER CREDIT -->
+    <footer class="mt-8 text-center text-gray-500 text-sm">
+        Built by Chandrashekhar
+    </footer>
+
+    <script>
+        // --- Configuration & Initialization ---
+        const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent";
+
+        // IMPORTANT: For local VS Code execution, you MUST paste your actual Gemini API Key here.
+        // Get your key from Google AI Studio. Keep it private!
+        const apiKey = "AIzaSyBw9DqMxy-wTrJi2plWj9ajf5H03B8KiYA"; // <<< PASTE YOUR API KEY HERE >>>
+
+        const genreInput = document.getElementById('genreInput');
+        const languageSelect = document.getElementById('languageSelect');
+        const pickButton = document.getElementById('pickButton');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const resultContainer = document.getElementById('resultContainer');
+        const movieTitle = document.getElementById('movieTitle');
+        const movieSummary = document.getElementById('movieSummary');
+        const sourcesContainer = document.getElementById('sourcesContainer');
+        const sourceList = document.getElementById('sourceList');
+        const errorContainer = document.getElementById('errorContainer');
+        const errorMessage = document.getElementById('errorMessage');
+        const bookingButton = document.getElementById('bookingButton');
+
+        // Define a unique prefix for the model to use when it fails to find a movie
+        const FAILURE_PREFIX = "[FAIL]";
+        const NO_MOVIE_PHRASE_EN = "No current theatrical releases found for this genre and language. Please try a different genre or check later.";
+
+
+        // --- Utility Functions for API Communication ---
+
+        /**
+         * Fetches data with exponential backoff for resilience.
+         * @param {string} url The API endpoint URL.
+         * @param {Object} options The fetch options (method, headers, body).
+         * @param {number} maxRetries Maximum number of retries.
+         * @returns {Promise<Response>} The fetch response.
+         */
+        async function exponentialBackoffFetch(url, options, maxRetries = 5) {
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.ok) {
+                        return response;
+                    }
+                    if (response.status === 429 && attempt < maxRetries - 1) {
+                        // Too Many Requests - apply backoff
+                        const delay = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        // Continue to next attempt
+                    } else {
+                        // Handle other non-successful status codes
+                        const errorBody = await response.text();
+                        throw new Error(`API call failed with status ${response.status}: ${errorBody}`);
+                    }
+                } catch (error) {
+                    if (attempt === maxRetries - 1) {
+                        throw new Error(`Fetch failed after ${maxRetries} attempts: ${error.message}`);
+                    }
+                    // Handle network errors and continue to next attempt
+                    const delay = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+
+
+        // --- Core Logic ---
+
+        async function fetchMovieSuggestion(genre, language) {
+
+            // System Prompt: Suggests a currently running, originally language-specific movie.
+            const systemPrompt = `You are a friendly and enthusiastic movie recommendation engine. Based on the user's requested genre, suggest only ONE specific, highly-rated movie that is **CURRENTLY RUNNING IN THEATERS** and was **originally made in the ${language} language or cinema**. Provide a concise, engaging summary of why it's a good pick. The entire response MUST be delivered entirely in ${language}. The response must be short and direct, focusing only on the movie title and summary. If you cannot find a currently playing movie that meets the criteria, you MUST respond only with the following prefix and translated phrase: "${FAILURE_PREFIX} ${NO_MOVIE_PHRASE_EN}" (with the phrase translated into ${language} but the prefix remaining as [FAIL]). Do NOT include any introductory or concluding phrases. Just the suggestion or the failure message.`;
+
+            const userQuery = `Suggest one movie from the "${genre}" genre that is **currently running in theaters**. The movie must be originally in ${language}. Give a short summary. If no such movie is found, respond only with the prefix and translated version of "${FAILURE_PREFIX} ${NO_MOVIE_PHRASE_EN}". The response MUST be delivered entirely in ${language}.`;
+
+            // If an apiKey is provided, append it to the URL
+            const url = apiKey ? `${API_URL}?key=${apiKey}` : API_URL;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                tools: [{ "google_search": {} }], // Use Google Search for grounding
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+            };
+
+            try {
+                const response = await exponentialBackoffFetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                const candidate = result.candidates?.[0];
+
+                if (!candidate || !candidate.content?.parts?.[0]?.text) {
+                    throw new Error("Received an empty or malformed response from the API.");
+                }
+
+                // 1. Extract the generated text
+                const text = candidate.content.parts[0].text.trim();
+
+                // 2. Extract grounding sources
+                let sources = [];
+                const groundingMetadata = candidate.groundingMetadata;
+                if (groundingMetadata && groundingMetadata.groundingAttributions) {
+                    sources = groundingMetadata.groundingAttributions
+                        .map(attribution => ({
+                            uri: attribution.web?.uri,
+                            title: attribution.web?.title,
+                        }))
+                        .filter(source => source.uri && source.title);
+                }
+
+                return { text, sources };
+
+            } catch (error) {
+                console.error("API Call Error:", error);
+                // Check specifically for an empty key error (though API might return 400 Bad Request)
+                if (!apiKey) {
+                    throw new Error("API Key is missing! Please paste your key into the 'apiKey' variable in the script block for local execution.");
+                }
+                throw new Error("Failed to fetch movie suggestion. Please check your network or try again.");
+            }
+        }
+
+        async function handlePickMovie() {
+            const genre = genreInput.value.trim();
+            const language = languageSelect.value; // Get the selected language
+
+            // Reset UI
+            resultContainer.classList.add('hidden');
+            errorContainer.classList.add('hidden');
+            movieTitle.textContent = '';
+            movieSummary.textContent = '';
+            sourceList.innerHTML = '';
+            bookingButton.classList.add('hidden'); // Reset the button state
+
+            if (!genre) {
+                errorMessage.textContent = "Please select a genre to get a suggestion!";
+                errorContainer.classList.remove('hidden');
+                return;
+            }
+
+            // Show loading state
+            pickButton.disabled = true;
+            loadingIndicator.classList.remove('hidden');
+
+            try {
+                // Pass the selected language
+                const { text, sources } = await fetchMovieSuggestion(genre, language);
+
+                // CHECK FOR FAILURE PREFIX
+                if (text.startsWith(FAILURE_PREFIX)) {
+                    const translatedMessage = text.substring(FAILURE_PREFIX.length).trim();
+                    // Display the "no movie found" message using the error container for emphasis
+                    errorMessage.textContent = translatedMessage || "Could not find a current theatrical release matching your criteria.";
+                    errorContainer.classList.remove('hidden');
+                    resultContainer.classList.add('hidden');
+                    return;
+                }
+
+                // If no failure prefix, proceed with parsing the movie suggestion
+
+                // Simple attempt to parse title and summary (e.g., first line is title, rest is summary)
+                const lines = text.split('\n').filter(line => line.trim() !== '');
+                let title = lines[0] || "Suggested Movie";
+                let summary = lines.slice(1).join(' ').trim();
+
+                // Check for common title/summary structures (e.g., bolding)
+                const boldMatch = text.match(/^\s*\*\*?([^\*]+)\*\*?\s*[:-]?\s*(.*)/s);
+                if (boldMatch) {
+                    title = boldMatch[1].trim();
+                    summary = boldMatch[2].trim() || lines.slice(1).join(' ').trim();
+                }
+
+                // If summary is empty after simple parsing, use the whole text.
+                if (!summary) {
+                    summary = text;
+                }
+
+                movieTitle.textContent = title;
+                movieSummary.textContent = summary;
+
+                // --- BOOKING LOGIC ---
+                // Clean up title for URL and construct a dynamic Google search link focused on booking tickets.
+                const searchTitle = encodeURIComponent(title.replace(/\*\*|["']+/g, '')); // Remove markdown bolding and quotes
+                const bookingUrl = `https://www.google.com/search?q=${searchTitle}+book+tickets+BookMyShow`;
+
+                bookingButton.setAttribute('href', bookingUrl);
+                bookingButton.classList.remove('hidden');
+                // --- END BOOKING LOGIC ---
+
+
+                // Display Sources
+                if (sources.length > 0) {
+                    sources.forEach(source => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `<a href="${source.uri}" target="_blank" class="text-blue-400 hover:text-blue-300 transition duration-150 truncate block">${source.title}</a>`;
+                        sourceList.appendChild(li);
+                    });
+                    sourcesContainer.classList.remove('hidden');
+                } else {
+                    sourcesContainer.classList.add('hidden');
+                }
+
+                resultContainer.classList.remove('hidden');
+
+            } catch (error) {
+                errorMessage.textContent = error.message;
+                errorContainer.classList.remove('hidden');
+            } finally {
+                // Hide loading state
+                pickButton.disabled = false;
+                loadingIndicator.classList.add('hidden');
+            }
+        }
+
+        // --- Event Listeners ---
+        pickButton.addEventListener('click', handlePickMovie);
+
+    </script>
+</body>
+
+</html>
